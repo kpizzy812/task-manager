@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Settings } from "lucide-react";
+import { BarChart3, Settings } from "lucide-react";
 import Link from "next/link";
 
 import { getProject } from "@/actions/projects";
@@ -59,12 +59,20 @@ export default async function ProjectPage({ params }: Props) {
             <p className="text-muted-foreground">{project.description}</p>
           )}
         </div>
-        <Button variant="outline" size="icon" asChild>
-          <Link href={`/projects/${id}/settings`}>
-            <Settings className="h-4 w-4" />
-            <span className="sr-only">Настройки проекта</span>
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={`/projects/${id}/analytics`}>
+              <BarChart3 className="h-4 w-4" />
+              <span className="sr-only">Аналитика проекта</span>
+            </Link>
+          </Button>
+          <Button variant="outline" size="icon" asChild>
+            <Link href={`/projects/${id}/settings`}>
+              <Settings className="h-4 w-4" />
+              <span className="sr-only">Настройки проекта</span>
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <KanbanBoard
