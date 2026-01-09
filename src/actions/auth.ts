@@ -12,8 +12,8 @@ export type ActionResponse = {
 
 export async function login(formData: FormData): Promise<ActionResponse> {
   const rawData = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
+    email: formData.get("email")?.toString() ?? "",
+    password: formData.get("password")?.toString() ?? "",
   };
 
   const validated = loginSchema.safeParse(rawData);
@@ -36,10 +36,10 @@ export async function login(formData: FormData): Promise<ActionResponse> {
 
 export async function register(formData: FormData): Promise<ActionResponse> {
   const rawData = {
-    name: formData.get("name") as string,
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
+    name: formData.get("name")?.toString() ?? "",
+    email: formData.get("email")?.toString() ?? "",
+    password: formData.get("password")?.toString() ?? "",
+    confirmPassword: formData.get("confirmPassword")?.toString() ?? "",
   };
 
   const validated = registerSchema.safeParse(rawData);
@@ -49,7 +49,6 @@ export async function register(formData: FormData): Promise<ActionResponse> {
 
   const supabase = await createClient();
 
-  // Sign up user in Supabase Auth
   const { data, error } = await supabase.auth.signUp({
     email: validated.data.email,
     password: validated.data.password,
@@ -71,6 +70,14 @@ export async function register(formData: FormData): Promise<ActionResponse> {
     return { success: false, error: "Ошибка при создании пользователя" };
   }
 
+  // Check if email confirmation is required (session will be null)
+  if (!data.session) {
+    return {
+      success: false,
+      error: "Проверьте email для подтверждения регистрации"
+    };
+  }
+
   // Create profile in database
   try {
     await prisma.profile.create({
@@ -80,9 +87,13 @@ export async function register(formData: FormData): Promise<ActionResponse> {
         name: validated.data.name,
       },
     });
-  } catch {
-    // Profile may already exist if trigger is set up in Supabase
-    // Just continue to dashboard
+  } catch (err) {
+    // Only ignore duplicate key error (profile already exists via trigger)
+    const isDuplicate = err instanceof Error &&
+      (err.message.includes("Unique constraint") || err.message.includes("duplicate"));
+    if (!isDuplicate) {
+      console.error("Failed to create profile:", err);
+    }
   }
 
   redirect("/dashboard");
