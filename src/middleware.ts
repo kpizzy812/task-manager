@@ -20,12 +20,22 @@ export async function middleware(request: NextRequest) {
   // Check if route is auth route (login/register)
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
+  // Helper to create redirect with cookies preserved
+  const redirectWithCookies = (url: URL) => {
+    const redirectResponse = NextResponse.redirect(url);
+    // Copy all cookies from supabaseResponse to redirect response
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return redirectResponse;
+  };
+
   // Redirect to login if trying to access protected route without auth
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   // Redirect if already authenticated and trying to access auth routes
@@ -40,7 +50,7 @@ export async function middleware(request: NextRequest) {
     } else {
       url.pathname = "/dashboard";
     }
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   return supabaseResponse;
