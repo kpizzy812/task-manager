@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, User } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -16,7 +16,6 @@ import {
 } from "@/lib/validations/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Card,
   CardContent,
@@ -33,6 +32,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { AvatarUpload } from "./avatar-upload";
 
 type ProfileSettingsProps = {
   profile: {
@@ -51,13 +51,6 @@ type ProfileSettingsProps = {
 export function ProfileSettings({ profile }: ProfileSettingsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
-  const initials = profile.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   const form = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
@@ -98,17 +91,19 @@ export function ProfileSettings({ profile }: ProfileSettingsProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-start gap-6">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={profile.avatar ?? undefined} alt={profile.name} />
-              <AvatarFallback className="text-2xl">
-                {initials || <User className="h-8 w-8" />}
-              </AvatarFallback>
-            </Avatar>
+            <AvatarUpload
+              currentAvatar={profile.avatar}
+              name={profile.name}
+              size="lg"
+            />
             <div className="flex-1 space-y-1">
               <h3 className="text-lg font-semibold">{profile.name}</h3>
               <p className="text-sm text-muted-foreground">{profile.email}</p>
               <p className="text-xs text-muted-foreground">
                 На платформе с {format(new Date(profile.createdAt), "d MMMM yyyy", { locale: ru })}
+              </p>
+              <p className="text-xs text-muted-foreground pt-2">
+                Нажмите на аватар для загрузки фото
               </p>
             </div>
           </div>
@@ -120,7 +115,7 @@ export function ProfileSettings({ profile }: ProfileSettingsProps) {
         <CardHeader>
           <CardTitle>Редактирование</CardTitle>
           <CardDescription>
-            Обновите имя и аватар
+            Обновите ваше имя
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -141,27 +136,6 @@ export function ProfileSettings({ profile }: ProfileSettingsProps) {
                     </FormControl>
                     <FormDescription>
                       Отображается в проектах и задачах
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="avatar"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL аватара</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://example.com/avatar.jpg"
-                        disabled={isPending}
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Ссылка на изображение профиля
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

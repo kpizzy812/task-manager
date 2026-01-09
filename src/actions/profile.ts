@@ -11,6 +11,14 @@ export type ActionResponse = {
   error?: string;
 };
 
+export type UploadResponse = ActionResponse & {
+  url?: string;
+};
+
+const AVATAR_BUCKET = "avatars";
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
 // Helper to get current user
 async function getCurrentUser() {
   const supabase = await createClient();
@@ -81,6 +89,79 @@ export async function updateProfile(formData: FormData): Promise<ActionResponse>
     revalidatePath("/settings");
     revalidatePath("/dashboard");
     return { success: true };
+  } catch {
+    return { success: false, error: "Ошибка при обновлении профиля" };
+  }
+}
+
+// Upload avatar to Supabase Storage
+export async function uploadAvatar(formData: FormData): Promise<UploadResponse> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "Необходима авторизация" };
+  }
+
+  const file = formData.get("file") as File | null;
+  if (!file) {
+    return { success: false, error: "Файл не выбран" };
+  }
+
+  // Validate file type
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { success: false, error: "Допустимые форматы: JPG, PNG, WebP, GIF" };
+  }
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    return { success: false, error: "Максимальный размер файла: 2MB" };
+  }
+
+  const supabase = await createClient();
+
+  // Generate unique filename
+  const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+  // Delete old avatar if exists
+  const { data: existingFiles } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .list(user.id);
+
+  if (existingFiles && existingFiles.length > 0) {
+    const filesToDelete = existingFiles.map((f) => `${user.id}/${f.name}`);
+    await supabase.storage.from(AVATAR_BUCKET).remove(filesToDelete);
+  }
+
+  // Upload new avatar
+  const { error: uploadError } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("Upload error:", uploadError);
+    return { success: false, error: "Ошибка при загрузке файла" };
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from(AVATAR_BUCKET)
+    .getPublicUrl(fileName);
+
+  const avatarUrl = urlData.publicUrl;
+
+  // Update profile with new avatar URL
+  try {
+    await prisma.profile.update({
+      where: { id: user.id },
+      data: { avatar: avatarUrl },
+    });
+
+    revalidatePath("/settings");
+    revalidatePath("/dashboard");
+    return { success: true, url: avatarUrl };
   } catch {
     return { success: false, error: "Ошибка при обновлении профиля" };
   }
