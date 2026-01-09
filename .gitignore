@@ -1,5 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Project docs (local only)
+CLAUDE.md
+SPEC.md
+
 # dependencies
 /node_modules
 /.pnp
