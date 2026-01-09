@@ -112,22 +112,29 @@ export async function GET(request: NextRequest) {
 
   console.log("[AUTH CALLBACK] User verified:", user.id, user.email);
 
-  // Create profile if needed
-  const existingProfile = await prisma.profile.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!existingProfile) {
-    try {
-      await prisma.profile.create({
-        data: {
-          id: user.id,
-          email: user.email!,
-          name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
-        },
+  // Create or update profile
+  try {
+    await prisma.profile.upsert({
+      where: { id: user.id },
+      update: {
+        email: user.email!,
+        name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+      },
+      create: {
+        id: user.id,
+        email: user.email!,
+        name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+      },
+    });
+  } catch (err) {
+    // If email already exists with different id, update that profile's id
+    if (err instanceof Error && err.message.includes("Unique constraint")) {
+      console.log("[AUTH CALLBACK] Email exists, updating profile id");
+      await prisma.profile.update({
+        where: { email: user.email! },
+        data: { id: user.id },
       });
-    } catch (err) {
-      // Ignore duplicate key error (profile may have been created by trigger)
+    } else {
       console.error("Profile creation error:", err);
     }
   }
