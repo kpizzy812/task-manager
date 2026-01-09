@@ -18,6 +18,14 @@ export async function GET(request: NextRequest) {
     | null;
   const next = searchParams.get("next") ?? "/dashboard";
 
+  console.log("[AUTH CALLBACK] Started", {
+    hasCode: !!code,
+    hasTokenHash: !!token_hash,
+    type,
+    next,
+    origin,
+  });
+
   const forwardedHost = request.headers.get("x-forwarded-host");
   const isLocalEnv = process.env.NODE_ENV === "development";
 
@@ -31,11 +39,13 @@ export async function GET(request: NextRequest) {
     baseUrl = origin;
   }
 
+  console.log("[AUTH CALLBACK] baseUrl:", baseUrl);
+
   const redirectUrl = `${baseUrl}${next}`;
 
   // Need either code or token_hash for authentication
   if (!code && !token_hash) {
-    console.error("Auth callback: No code or token_hash provided");
+    console.error("[AUTH CALLBACK] No code or token_hash provided");
     return NextResponse.redirect(`${baseUrl}/login?error=auth_callback_error`);
   }
 
@@ -65,29 +75,42 @@ export async function GET(request: NextRequest) {
 
   // Handle token_hash (email confirmation) or code (OAuth/PKCE)
   if (token_hash && type) {
+    console.log("[AUTH CALLBACK] Verifying OTP with token_hash");
     const result = await supabase.auth.verifyOtp({
       token_hash,
       type,
     });
     data = result.data;
     error = result.error;
+    console.log("[AUTH CALLBACK] verifyOtp result:", {
+      hasSession: !!result.data?.session,
+      hasUser: !!result.data?.user,
+      error: result.error?.message,
+    });
   } else if (code) {
+    console.log("[AUTH CALLBACK] Exchanging code for session");
     const result = await supabase.auth.exchangeCodeForSession(code);
     data = result.data;
     error = result.error;
+    console.log("[AUTH CALLBACK] exchangeCode result:", {
+      hasSession: !!result.data?.session,
+      error: result.error?.message,
+    });
   }
 
   if (error) {
-    console.error("Auth callback error:", error.message);
+    console.error("[AUTH CALLBACK] Error:", error.message);
     return NextResponse.redirect(`${baseUrl}/login?error=auth_callback_error`);
   }
 
   // Verify session was created
   const user = data?.session?.user;
   if (!user) {
-    console.error("Auth callback: No session created after verification");
+    console.error("[AUTH CALLBACK] No session created after verification");
     return NextResponse.redirect(`${baseUrl}/login?error=no_session`);
   }
+
+  console.log("[AUTH CALLBACK] User verified:", user.id, user.email);
 
   // Create profile if needed
   const existingProfile = await prisma.profile.findUnique({

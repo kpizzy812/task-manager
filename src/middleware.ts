@@ -12,6 +12,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  console.log("[MIDDLEWARE]", pathname, "user:", user?.id ?? "none");
+
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
