@@ -154,30 +154,39 @@ export function KanbanBoard({
           }
 
           const taskId = String(source.id);
-          // Increment version to track this update
-          const updateVersion = ++localVersionRef.current;
-          // Capture rollback state
+          // Capture rollback state before clearing
           const rollbackState = previousTasksRef.current;
           previousTasksRef.current = null;
 
-          // Get final position from current state and send to server
-          const currentColumn = findTaskColumn(taskId, tasks);
-          if (!currentColumn) return;
+          // Defer server call to next tick to not block UI
+          // This is critical - server actions block the event loop on invocation
+          setTimeout(() => {
+            // Increment version to track this update
+            const updateVersion = ++localVersionRef.current;
 
-          const taskIndex = tasks[currentColumn].findIndex(
-            (t) => t.id === taskId
-          );
+            // Get final position from current state
+            setTasks((currentTasks) => {
+              const currentColumn = findTaskColumn(taskId, currentTasks);
+              if (!currentColumn) return currentTasks;
 
-          // Send to server in background (fire and forget for UI)
-          updateTaskOrder(taskId, currentColumn, taskIndex).then((result) => {
-            if (result.error) {
-              toast.error(result.error);
-              // Only rollback if no newer updates happened
-              if (localVersionRef.current === updateVersion && rollbackState) {
-                setTasks(rollbackState);
-              }
-            }
-          });
+              const taskIndex = currentTasks[currentColumn].findIndex(
+                (t) => t.id === taskId
+              );
+
+              // Send to server in background
+              updateTaskOrder(taskId, currentColumn, taskIndex).then((result) => {
+                if (result.error) {
+                  toast.error(result.error);
+                  // Only rollback if no newer updates happened
+                  if (localVersionRef.current === updateVersion && rollbackState) {
+                    setTasks(rollbackState);
+                  }
+                }
+              });
+
+              return currentTasks;
+            });
+          }, 0);
         }}
       >
         <div className="flex gap-4 overflow-x-auto pb-4">
