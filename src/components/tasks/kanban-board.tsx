@@ -30,13 +30,12 @@ export function KanbanBoard({
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // Track if we're currently dragging to prevent sync overwrite
-  const isDraggingRef = useRef(false);
+  // Track pending server update to prevent sync overwrite
+  const pendingUpdateRef = useRef(false);
 
   // Sync local state when server data changes (after router.refresh())
   useEffect(() => {
-    // Don't overwrite local state while dragging
-    if (!isDraggingRef.current) {
+    if (!pendingUpdateRef.current) {
       setTasks(initialTasks);
     }
   }, [initialTasks]);
@@ -50,90 +49,92 @@ export function KanbanBoard({
     setSelectedTask(task);
   }
 
-  function handleDragEnd(event: {
-    source: { id: string; type: string };
-    target: { id: string; type: string } | null;
-    canceled: boolean;
-  }) {
-    isDraggingRef.current = false;
-
-    if (event.canceled || !event.target) return;
-
-    const { source, target } = event;
-    if (source.type !== "task") return;
-
-    const taskId = source.id as string;
-    const newStatus = target.id as TaskStatus;
-
-    // Find the task in current state
-    let movedTask: Task | null = null;
-    let oldStatus: TaskStatus | null = null;
+  // Find which column a task is in
+  function findTaskColumn(taskId: string, currentTasks: Record<TaskStatus, Task[]>): TaskStatus | null {
     for (const column of COLUMNS) {
-      const task = tasks[column].find((t) => t.id === taskId);
-      if (task) {
-        movedTask = task;
-        oldStatus = column;
-        break;
+      if (currentTasks[column].some((t) => t.id === taskId)) {
+        return column;
       }
     }
+    return null;
+  }
 
-    if (!movedTask || !oldStatus) return;
+  function handleDragEnd(event: {
+    source: { id: string; type: string } | null;
+    target: { id: string; type: string } | null;
+    canceled: boolean;
+    currentTasks: Record<TaskStatus, Task[]>;
+  }) {
+    const { source, target, canceled, currentTasks } = event;
 
-    // Calculate new order
-    const tasksInNewColumn = tasks[newStatus].filter((t) => t.id !== taskId);
-    const newOrder =
-      tasksInNewColumn.length > 0
-        ? Math.max(...tasksInNewColumn.map((t) => t.order)) + 1
-        : 0;
+    if (canceled || !source || !target) return;
+    if (source.type !== "task") return;
 
-    // Save current state for rollback
-    const previousTasks = tasks;
+    const taskId = source.id;
 
-    // Optimistically update UI immediately
-    setTasks((current) => {
-      const updated = { ...current };
-      // Remove from old column
-      updated[oldStatus] = current[oldStatus].filter((t) => t.id !== taskId);
-      // Add to new column with updated status
-      const updatedTask = { ...movedTask!, status: newStatus, order: newOrder };
-      updated[newStatus] = [...current[newStatus].filter((t) => t.id !== taskId), updatedTask];
-      return updated;
-    });
+    // Determine target column
+    let newStatus: TaskStatus;
+    if (target.type === "column") {
+      newStatus = target.id as TaskStatus;
+    } else {
+      // Target is another task - find its column
+      const targetColumn = findTaskColumn(target.id, currentTasks);
+      if (!targetColumn) return;
+      newStatus = targetColumn;
+    }
 
-    // Send to server in background (no await)
-    updateTaskOrder(taskId, newStatus, newOrder).then((result) => {
-      if (result.error) {
-        toast.error(result.error);
-        // Rollback on error
-        setTasks(previousTasks);
-      }
-    });
+    // Find task's current column after move() was applied
+    const currentColumn = findTaskColumn(taskId, currentTasks);
+    if (!currentColumn) return;
+
+    // Get the task
+    const movedTask = currentTasks[currentColumn].find((t) => t.id === taskId);
+    if (!movedTask) return;
+
+    // Calculate new order based on position in column
+    const taskIndex = currentTasks[newStatus].findIndex((t) => t.id === taskId);
+    const newOrder = taskIndex >= 0 ? taskIndex : 0;
+
+    // Set pending flag to prevent useEffect from overwriting
+    pendingUpdateRef.current = true;
+
+    // Send to server
+    updateTaskOrder(taskId, newStatus, newOrder)
+      .then((result) => {
+        if (result.error) {
+          toast.error(result.error);
+        }
+      })
+      .finally(() => {
+        // Allow sync again after a short delay
+        setTimeout(() => {
+          pendingUpdateRef.current = false;
+        }, 500);
+      });
   }
 
   return (
     <>
       <DragDropProvider
-        onDragStart={() => {
-          isDraggingRef.current = true;
-        }}
         onDragOver={(event) => {
           const { source } = event.operation;
           if (source?.type !== "task") return;
-          setTasks((tasks) => move(tasks, event));
+          setTasks((currentTasks) => move(currentTasks, event));
         }}
         onDragEnd={(event) => {
-          handleDragEnd({
-            source: {
-              id: String(event.operation.source?.id),
-              type: String(event.operation.source?.type),
-            },
-            target: event.operation.target
-              ? {
-                  id: String(event.operation.target.id),
-                  type: String(event.operation.target.type),
-                }
-              : null,
-            canceled: event.canceled,
+          // Get current tasks state for the handler
+          setTasks((currentTasks) => {
+            handleDragEnd({
+              source: event.operation.source
+                ? { id: String(event.operation.source.id), type: String(event.operation.source.type) }
+                : null,
+              target: event.operation.target
+                ? { id: String(event.operation.target.id), type: String(event.operation.target.type) }
+                : null,
+              canceled: event.canceled,
+              currentTasks,
+            });
+            return currentTasks;
           });
         }}
       >
