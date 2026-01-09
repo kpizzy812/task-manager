@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -79,6 +79,20 @@ export function CreateTaskModal({
     },
   });
 
+  // Reset form when modal opens with new status
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        title: "",
+        description: "",
+        status: defaultStatus,
+        priority: "MEDIUM",
+        deadline: null,
+        assigneeId: null,
+      });
+    }
+  }, [open, defaultStatus, form]);
+
   function onSubmit(data: CreateTaskInput) {
     startTransition(async () => {
       const formData = new FormData();
@@ -101,7 +115,6 @@ export function CreateTaskModal({
         toast.error(result.error);
       } else {
         toast.success("Задача создана");
-        form.reset();
         onOpenChange(false);
       }
     });
