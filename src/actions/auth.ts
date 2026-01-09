@@ -113,9 +113,6 @@ export async function register(
     ? `${siteUrl}/auth/callback?next=/invite/${inviteToken}`
     : `${siteUrl}/auth/callback`;
 
-  console.log("[REGISTER] siteUrl:", siteUrl);
-  console.log("[REGISTER] callbackUrl:", callbackUrl);
-
   const { data, error } = await supabase.auth.signUp({
     email: validated.data.email,
     password: validated.data.password,
