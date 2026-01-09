@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { DragDropProvider } from "@dnd-kit/react";
 import { toast } from "sonner";
 
@@ -135,26 +136,28 @@ export function KanbanBoard({
             } else {
               // Target is another task - find its column and index
               const targetTaskId = String(target.id);
-              setTasks((current) => {
-                const column = findTaskColumn(targetTaskId, current);
-                if (!column) return current;
+              flushSync(() => {
+                setTasks((current) => {
+                  const column = findTaskColumn(targetTaskId, current);
+                  if (!column) return current;
 
-                targetColumn = column;
-                targetIndex = current[column].findIndex((t) => t.id === targetTaskId);
+                  targetColumn = column;
+                  targetIndex = current[column].findIndex((t) => t.id === targetTaskId);
 
-                // Skip if position hasn't changed
-                const lastMove = lastMoveRef.current;
-                if (
-                  lastMove &&
-                  lastMove.taskId === taskId &&
-                  lastMove.column === targetColumn &&
-                  lastMove.index === targetIndex
-                ) {
-                  return current;
-                }
+                  // Skip if position hasn't changed
+                  const lastMove = lastMoveRef.current;
+                  if (
+                    lastMove &&
+                    lastMove.taskId === taskId &&
+                    lastMove.column === targetColumn &&
+                    lastMove.index === targetIndex
+                  ) {
+                    return current;
+                  }
 
-                lastMoveRef.current = { taskId, column: targetColumn, index: targetIndex };
-                return moveTask(current, taskId, targetColumn, targetIndex);
+                  lastMoveRef.current = { taskId, column: targetColumn, index: targetIndex };
+                  return moveTask(current, taskId, targetColumn, targetIndex);
+                });
               });
               return;
             }
@@ -171,9 +174,11 @@ export function KanbanBoard({
             }
 
             lastMoveRef.current = { taskId, column: targetColumn, index: targetIndex };
-            setTasks((current) =>
-              moveTask(current, taskId, targetColumn, targetIndex >= 0 ? targetIndex : undefined)
-            );
+            flushSync(() => {
+              setTasks((current) =>
+                moveTask(current, taskId, targetColumn, targetIndex >= 0 ? targetIndex : undefined)
+              );
+            });
           });
         }}
         onDragEnd={(event) => {
@@ -188,7 +193,9 @@ export function KanbanBoard({
           // Handle cancel - rollback to previous state
           if (event.canceled) {
             if (previousTasksRef.current) {
-              setTasks(previousTasksRef.current);
+              flushSync(() => {
+                setTasks(previousTasksRef.current!);
+              });
             }
             previousTasksRef.current = null;
             lastMoveRef.current = null;
