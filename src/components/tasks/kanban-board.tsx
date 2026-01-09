@@ -33,6 +33,10 @@ export function KanbanBoard({
   const previousTasksRef = useRef<Record<TaskStatus, Task[]> | null>(null);
   // Track server sync version to handle stale updates
   const localVersionRef = useRef(0);
+  // Track last move to prevent duplicate updates
+  const lastMoveRef = useRef<{ taskId: string; column: string; index: number } | null>(null);
+  // Throttle flag for requestAnimationFrame
+  const rafRef = useRef<number | null>(null);
 
   // Sync local state when server data changes
   useEffect(() => {
@@ -106,38 +110,80 @@ export function KanbanBoard({
         onDragStart={() => {
           // Save current state for potential rollback
           previousTasksRef.current = tasks;
+          // Reset last move tracking
+          lastMoveRef.current = null;
         }}
         onDragOver={(event) => {
-          const { source, target } = event.operation;
-          if (!source || source.type !== "task" || !target) return;
+          // Throttle with requestAnimationFrame to prevent browser crash
+          if (rafRef.current !== null) return;
 
-          const taskId = String(source.id);
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
 
-          // Determine target column and index
-          let targetColumn: TaskStatus;
-          let targetIndex: number | undefined;
+            const { source, target } = event.operation;
+            if (!source || source.type !== "task" || !target) return;
 
-          if (target.type === "column") {
-            targetColumn = target.id as TaskStatus;
-          } else {
-            // Target is another task
-            const targetTaskId = String(target.id);
-            setTasks((current) => {
-              const column = findTaskColumn(targetTaskId, current);
-              if (!column) return current;
+            const taskId = String(source.id);
 
-              targetColumn = column;
-              targetIndex = current[column].findIndex((t) => t.id === targetTaskId);
+            // Determine target column and index
+            let targetColumn: TaskStatus;
+            let targetIndex: number;
 
-              return moveTask(current, taskId, targetColumn, targetIndex);
-            });
-            return;
-          }
+            if (target.type === "column") {
+              targetColumn = target.id as TaskStatus;
+              targetIndex = -1; // End of column
+            } else {
+              // Target is another task - find its column and index
+              const targetTaskId = String(target.id);
+              setTasks((current) => {
+                const column = findTaskColumn(targetTaskId, current);
+                if (!column) return current;
 
-          setTasks((current) => moveTask(current, taskId, targetColumn, targetIndex));
+                targetColumn = column;
+                targetIndex = current[column].findIndex((t) => t.id === targetTaskId);
+
+                // Skip if position hasn't changed
+                const lastMove = lastMoveRef.current;
+                if (
+                  lastMove &&
+                  lastMove.taskId === taskId &&
+                  lastMove.column === targetColumn &&
+                  lastMove.index === targetIndex
+                ) {
+                  return current;
+                }
+
+                lastMoveRef.current = { taskId, column: targetColumn, index: targetIndex };
+                return moveTask(current, taskId, targetColumn, targetIndex);
+              });
+              return;
+            }
+
+            // Skip if position hasn't changed
+            const lastMove = lastMoveRef.current;
+            if (
+              lastMove &&
+              lastMove.taskId === taskId &&
+              lastMove.column === targetColumn &&
+              lastMove.index === targetIndex
+            ) {
+              return;
+            }
+
+            lastMoveRef.current = { taskId, column: targetColumn, index: targetIndex };
+            setTasks((current) =>
+              moveTask(current, taskId, targetColumn, targetIndex >= 0 ? targetIndex : undefined)
+            );
+          });
         }}
         onDragEnd={(event) => {
           const { source, target } = event.operation;
+
+          // Cancel any pending RAF
+          if (rafRef.current !== null) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
+          }
 
           // Handle cancel - rollback to previous state
           if (event.canceled) {
@@ -145,6 +191,7 @@ export function KanbanBoard({
               setTasks(previousTasksRef.current);
             }
             previousTasksRef.current = null;
+            lastMoveRef.current = null;
             return;
           }
 
@@ -157,6 +204,7 @@ export function KanbanBoard({
           // Capture rollback state before clearing
           const rollbackState = previousTasksRef.current;
           previousTasksRef.current = null;
+          lastMoveRef.current = null;
 
           // Defer server call to next tick to not block UI
           // This is critical - server actions block the event loop on invocation
