@@ -1,0 +1,77 @@
+import { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { Settings } from "lucide-react";
+import Link from "next/link";
+
+import { getProject } from "@/actions/projects";
+import { getTasksByProject, getProjectMembers } from "@/actions/tasks";
+import { Button } from "@/components/ui/button";
+import { KanbanBoard } from "@/components/tasks/kanban-board";
+import { type TaskStatus } from "@/lib/validations/task";
+import { type Task } from "@/types/task";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const project = await getProject(id);
+
+  if (!project) {
+    return {
+      title: "Проект не найден | Task Manager",
+    };
+  }
+
+  return {
+    title: `${project.name} | Task Manager`,
+    description: project.description ?? "Kanban-доска проекта",
+  };
+}
+
+export default async function ProjectPage({ params }: Props) {
+  const { id } = await params;
+  const [project, tasks, members] = await Promise.all([
+    getProject(id),
+    getTasksByProject(id),
+    getProjectMembers(id),
+  ]);
+
+  if (!project || !tasks) {
+    notFound();
+  }
+
+  // Transform tasks to match component types
+  const transformedTasks: Record<TaskStatus, Task[]> = {
+    TODO: tasks.TODO as Task[],
+    IN_PROGRESS: tasks.IN_PROGRESS as Task[],
+    REVIEW: tasks.REVIEW as Task[],
+    DONE: tasks.DONE as Task[],
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+          {project.description && (
+            <p className="text-muted-foreground">{project.description}</p>
+          )}
+        </div>
+        <Button variant="outline" size="icon" asChild>
+          <Link href={`/projects/${id}/settings`}>
+            <Settings className="h-4 w-4" />
+            <span className="sr-only">Настройки проекта</span>
+          </Link>
+        </Button>
+      </div>
+
+      <KanbanBoard
+        projectId={id}
+        initialTasks={transformedTasks}
+        members={members}
+      />
+    </div>
+  );
+}
