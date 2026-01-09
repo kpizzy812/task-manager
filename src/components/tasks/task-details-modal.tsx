@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -67,6 +68,7 @@ export function TaskDetailsModal({
   onClose,
   members,
 }: TaskDetailsModalProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<UpdateTaskInput>({
@@ -103,6 +105,7 @@ export function TaskDetailsModal({
       } else {
         toast.success("Задача обновлена");
         onClose();
+        router.refresh();
       }
     });
   }
@@ -118,6 +121,7 @@ export function TaskDetailsModal({
       } else {
         toast.success("Задача удалена");
         onClose();
+        router.refresh();
       }
     });
   }

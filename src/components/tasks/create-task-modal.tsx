@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -65,6 +66,7 @@ export function CreateTaskModal({
   defaultStatus,
   members,
 }: CreateTaskModalProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<CreateTaskInput>({
@@ -116,6 +118,7 @@ export function CreateTaskModal({
       } else {
         toast.success("Задача создана");
         onOpenChange(false);
+        router.refresh();
       }
     });
   }
