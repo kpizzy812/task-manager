@@ -246,7 +246,8 @@ export async function updateTaskOrder(
       },
     });
 
-    revalidatePath(`/projects/${task.projectId}`);
+    // Don't revalidate - UI is already updated optimistically
+    // revalidatePath would reset the optimistic state and block UI
     return { success: true };
   } catch {
     return { success: false, error: "Ошибка при обновлении порядка" };
