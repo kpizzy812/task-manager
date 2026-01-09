@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TaskFlow
 
-## Getting Started
+Современный task-менеджер для команд — упрощённый аналог Linear/Trello с Kanban-доской и аналитикой.
 
-First, run the development server:
+**[Live Demo](https://taskmanager-lac-ten.vercel.app/)**
+
+## Возможности
+
+- **Аутентификация** — регистрация, вход, защищённые роуты
+- **Проекты** — создание, управление участниками, приглашения по email и публичные ссылки
+- **Задачи** — название, описание, исполнитель, дедлайн, приоритет (Low/Medium/High/Urgent)
+- **Kanban-доска** — 4 колонки (To Do → In Progress → Review → Done), drag-and-drop
+- **Аналитика** — статистика по статусам, просроченные задачи, графики
+- **Профиль** — редактирование имени, загрузка аватара
+
+## Стек технологий
+
+| Категория | Технологии |
+|-----------|------------|
+| **Frontend** | Next.js 16, React 19, TypeScript |
+| **Styling** | Tailwind CSS 4, Radix UI |
+| **Backend** | Next.js Server Actions |
+| **Database** | PostgreSQL (Supabase) |
+| **ORM** | Prisma 6 |
+| **Auth** | Supabase Auth |
+| **Storage** | Supabase Storage (аватары) |
+| **Validation** | Zod |
+| **DnD** | @dnd-kit |
+| **Charts** | Recharts |
+| **Deploy** | Vercel |
+
+## Быстрый старт
+
+### Требования
+
+- Node.js 18+
+- npm/yarn/pnpm
+- PostgreSQL (или Supabase аккаунт)
+
+### Установка
 
 ```bash
+# Клонировать репозиторий
+git clone https://github.com/kpizzy812/task-manager.git
+cd task-manager
+
+# Установить зависимости
+npm install
+
+# Настроить переменные окружения
+cp .env.example .env
+# Заполнить .env своими данными
+
+# Применить миграции
+npx prisma migrate dev
+
+# Запустить dev-сервер
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Открыть [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Переменные окружения
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Database
+DATABASE_URL="postgresql://..."
+DIRECT_URL="postgresql://..."
 
-## Learn More
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="xxx"
 
-To learn more about Next.js, take a look at the following resources:
+# App
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Структура проекта
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── actions/        # Server Actions (auth, tasks, projects, profile)
+├── app/            # Next.js App Router
+│   ├── (auth)/     # Страницы авторизации
+│   ├── (dashboard)/ # Защищённые страницы
+│   └── invite/     # Приглашения в проекты
+├── components/     # React компоненты
+│   ├── ui/         # UI Kit (Radix + Tailwind)
+│   ├── tasks/      # Kanban, карточки задач
+│   ├── projects/   # Проекты, участники
+│   └── analytics/  # Графики, статистика
+├── lib/            # Утилиты, валидации, Prisma клиент
+└── middleware.ts   # Защита роутов
+```
 
-## Deploy on Vercel
+## Скрипты
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev      # Запуск dev-сервера
+npm run build    # Production сборка
+npm run start    # Запуск production
+npm run lint     # Проверка ESLint
+npm run test     # Запуск тестов
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Безопасность
+
+- Rate limiting на аутентификацию (защита от brute force)
+- Валидация всех входных данных через Zod
+- Row-level проверки доступа к проектам и задачам
+- Secure cookies для сессий
+
+## Лицензия
+
+MIT
