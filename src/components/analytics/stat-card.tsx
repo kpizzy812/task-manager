@@ -8,10 +8,6 @@ type StatCardProps = {
   value: string | number;
   description?: string;
   icon: LucideIcon;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
   className?: string;
 };
 

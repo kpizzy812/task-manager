@@ -64,10 +64,11 @@ export function OverdueTasksList({ tasks }: OverdueTasksListProps) {
                       <AvatarFallback className="text-xs">
                         {task.assignee.name
                           .split(" ")
+                          .filter((n) => n.length > 0)
                           .map((n) => n[0])
                           .join("")
                           .toUpperCase()
-                          .slice(0, 2)}
+                          .slice(0, 2) || "?"}
                       </AvatarFallback>
                     </Avatar>
                   )}
