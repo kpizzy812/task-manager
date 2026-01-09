@@ -10,10 +10,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
 import { updateProfile } from "@/actions/profile";
-import {
-  updateProfileSchema,
-  type UpdateProfileInput,
-} from "@/lib/validations/profile";
+import { updateProfileSchema } from "@/lib/validations/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,21 +49,17 @@ export function ProfileSettings({ profile }: ProfileSettingsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm<UpdateProfileInput>({
-    resolver: zodResolver(updateProfileSchema),
+  const form = useForm<{ name: string }>({
+    resolver: zodResolver(updateProfileSchema.pick({ name: true })),
     defaultValues: {
       name: profile.name,
-      avatar: profile.avatar ?? "",
     },
   });
 
-  function onSubmit(data: UpdateProfileInput) {
+  function onSubmit(data: { name: string }) {
     startTransition(async () => {
       const formData = new FormData();
       formData.append("name", data.name);
-      if (data.avatar) {
-        formData.append("avatar", data.avatar);
-      }
 
       const result = await updateProfile(formData);
 
