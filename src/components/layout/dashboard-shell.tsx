@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
+import { MobileNav } from "./mobile-nav";
 import { CreateProjectModal } from "@/components/projects/create-project-modal";
 
 type Project = {
@@ -29,7 +30,15 @@ export function DashboardShell({ user, projects, children }: DashboardShellProps
 
   return (
     <div className="min-h-screen bg-background">
-      <Header user={user} />
+      <Header
+        user={user}
+        mobileNav={
+          <MobileNav
+            projects={projects}
+            onCreateProject={() => setIsCreateModalOpen(true)}
+          />
+        }
+      />
       <Sidebar projects={projects} onCreateProject={() => setIsCreateModalOpen(true)} />
       <main className="md:pl-64">
         <div className="p-4 md:p-6">{children}</div>
