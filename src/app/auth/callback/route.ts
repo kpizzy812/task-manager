@@ -50,17 +50,15 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     console.error("Auth callback error:", error.message);
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`);
   }
 
-  // Get user and create profile if needed
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Create profile if needed - use session data directly since cookies are on response
+  const user = data.session?.user;
 
   if (user) {
     const existingProfile = await prisma.profile.findUnique({
