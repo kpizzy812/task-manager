@@ -496,6 +496,12 @@ export async function acceptInvitation(token: string): Promise<ActionResponse> {
 
 // Decline invitation
 export async function declineInvitation(token: string): Promise<ActionResponse> {
+  // Authorization check
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "Необходима авторизация" };
+  }
+
   const invitation = await prisma.invitation.findUnique({
     where: { token },
   });
@@ -506,6 +512,18 @@ export async function declineInvitation(token: string): Promise<ActionResponse> 
 
   if (invitation.status !== "PENDING") {
     return { success: false, error: "Приглашение уже обработано" };
+  }
+
+  // For personal invitations, verify the email matches
+  if (!invitation.isPublic && invitation.email) {
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { email: true },
+    });
+
+    if (invitation.email.toLowerCase() !== profile?.email?.toLowerCase()) {
+      return { success: false, error: "Нет прав для отклонения этого приглашения" };
+    }
   }
 
   try {

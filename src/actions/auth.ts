@@ -1,9 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import {
+  checkRateLimit,
+  resetRateLimit,
+  AUTH_RATE_LIMIT,
+  REGISTER_RATE_LIMIT,
+} from "@/lib/rate-limit";
 
 export type ActionResponse = {
   success: boolean;
@@ -11,10 +18,32 @@ export type ActionResponse = {
   message?: string; // For success messages (e.g., email confirmation)
 };
 
+// Get client IP for rate limiting
+async function getClientIp(): Promise<string> {
+  const headersList = await headers();
+  return (
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headersList.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
 export async function login(
   formData: FormData,
   inviteToken?: string
 ): Promise<ActionResponse> {
+  // Rate limit check by IP
+  const ip = await getClientIp();
+  const rateLimitKey = `login:${ip}`;
+  const rateLimit = checkRateLimit(rateLimitKey, AUTH_RATE_LIMIT);
+
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: `Слишком много попыток. Повторите через ${rateLimit.resetIn} сек.`,
+    };
+  }
+
   const rawData = {
     email: formData.get("email")?.toString() ?? "",
     password: formData.get("password")?.toString() ?? "",
@@ -35,6 +64,9 @@ export async function login(
     return { success: false, error: "Неверный email или пароль" };
   }
 
+  // Reset rate limit on successful login
+  resetRateLimit(rateLimitKey);
+
   // Redirect to invite page if token provided
   if (inviteToken) {
     redirect(`/invite/${inviteToken}`);
@@ -47,6 +79,19 @@ export async function register(
   formData: FormData,
   inviteToken?: string
 ): Promise<ActionResponse> {
+  // Rate limit check by IP (stricter for registration)
+  const ip = await getClientIp();
+  const rateLimitKey = `register:${ip}`;
+  const rateLimit = checkRateLimit(rateLimitKey, REGISTER_RATE_LIMIT);
+
+  if (!rateLimit.success) {
+    const minutes = Math.ceil(rateLimit.resetIn / 60);
+    return {
+      success: false,
+      error: `Слишком много попыток регистрации. Повторите через ${minutes} мин.`,
+    };
+  }
+
   const rawData = {
     name: formData.get("name")?.toString() ?? "",
     email: formData.get("email")?.toString() ?? "",
