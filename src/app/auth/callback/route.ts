@@ -57,27 +57,30 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`);
   }
 
-  // Create profile if needed - use session data directly since cookies are on response
+  // Verify session was created
   const user = data.session?.user;
+  if (!user) {
+    console.error("Auth callback: No session created after code exchange");
+    return NextResponse.redirect(`${origin}/login?error=no_session`);
+  }
 
-  if (user) {
-    const existingProfile = await prisma.profile.findUnique({
-      where: { id: user.id },
-    });
+  // Create profile if needed
+  const existingProfile = await prisma.profile.findUnique({
+    where: { id: user.id },
+  });
 
-    if (!existingProfile) {
-      try {
-        await prisma.profile.create({
-          data: {
-            id: user.id,
-            email: user.email!,
-            name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
-          },
-        });
-      } catch (err) {
-        // Ignore duplicate key error (profile may have been created by trigger)
-        console.error("Profile creation error:", err);
-      }
+  if (!existingProfile) {
+    try {
+      await prisma.profile.create({
+        data: {
+          id: user.id,
+          email: user.email!,
+          name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+        },
+      });
+    } catch (err) {
+      // Ignore duplicate key error (profile may have been created by trigger)
+      console.error("Profile creation error:", err);
     }
   }
 

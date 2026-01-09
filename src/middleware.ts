@@ -29,7 +29,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect if already authenticated and trying to access auth routes
-  if (isAuthRoute && user) {
+  // Don't redirect if there's an error parameter (prevents redirect loops)
+  if (isAuthRoute && user && !request.nextUrl.searchParams.has("error")) {
     const url = request.nextUrl.clone();
     // If there's an invite token, redirect to invite page instead of dashboard
     const inviteToken = request.nextUrl.searchParams.get("invite");
