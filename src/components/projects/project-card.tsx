@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
-import { FolderKanban, MoreHorizontal, Trash2, Users } from "lucide-react";
+import { FolderKanban, MoreHorizontal, Trash2, Users, UserPlus, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteProject } from "@/actions/projects";
+import { QuickInviteModal } from "./quick-invite-modal";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -53,7 +56,13 @@ type ProjectCardProps = {
 };
 
 export function ProjectCard({ project, currentUserId }: ProjectCardProps) {
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+
   const isOwner = project.ownerId === currentUserId;
+  const isAdmin = project.members.some(
+    (m) => m.userId === currentUserId && (m.role === "OWNER" || m.role === "ADMIN")
+  );
+  const canInvite = isOwner || isAdmin;
   const memberCount = project.members.length;
   const taskCount = project._count.tasks;
 
@@ -67,25 +76,25 @@ export function ProjectCard({ project, currentUserId }: ProjectCardProps) {
   }
 
   return (
-    <Card className="group relative transition-shadow hover:shadow-md">
-      <Link href={`/projects/${project.id}`} className="absolute inset-0 z-0" />
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <FolderKanban className="h-5 w-5 text-primary" />
+    <>
+      <Card className="group relative transition-shadow hover:shadow-md">
+        <Link href={`/projects/${project.id}`} className="absolute inset-0 z-0" />
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <FolderKanban className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base">{project.name}</CardTitle>
+              <CardDescription className="text-xs">
+                Обновлён{" "}
+                {formatDistanceToNow(project.updatedAt, {
+                  addSuffix: true,
+                  locale: ru,
+                })}
+              </CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-base">{project.name}</CardTitle>
-            <CardDescription className="text-xs">
-              Обновлён{" "}
-              {formatDistanceToNow(project.updatedAt, {
-                addSuffix: true,
-                locale: ru,
-              })}
-            </CardDescription>
-          </div>
-        </div>
-        {isOwner && (
           <AlertDialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -100,12 +109,37 @@ export function ProjectCard({ project, currentUserId }: ProjectCardProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Удалить
+                {canInvite && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setInviteModalOpen(true);
+                    }}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Пригласить
                   </DropdownMenuItem>
-                </AlertDialogTrigger>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/projects/${project.id}/settings`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Настройки
+                  </Link>
+                </DropdownMenuItem>
+                {isOwner && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             <AlertDialogContent>
@@ -127,8 +161,7 @@ export function ProjectCard({ project, currentUserId }: ProjectCardProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        )}
-      </CardHeader>
+        </CardHeader>
       <CardContent>
         {project.description && (
           <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">
@@ -147,5 +180,13 @@ export function ProjectCard({ project, currentUserId }: ProjectCardProps) {
         </div>
       </CardContent>
     </Card>
+
+    <QuickInviteModal
+      open={inviteModalOpen}
+      onOpenChange={setInviteModalOpen}
+      projectId={project.id}
+      projectName={project.name}
+    />
+  </>
   );
 }
