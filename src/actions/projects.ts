@@ -3,8 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import {
+  getCurrentUser,
+  getCurrentProfile as getCachedProfile,
+  getProjectWithAccess,
+} from "@/lib/auth";
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -15,20 +19,6 @@ export type ActionResponse = {
   success: boolean;
   error?: string;
 };
-
-// Helper to get current user
-async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  return user;
-}
 
 // Get all projects for current user
 export async function getProjects() {
@@ -63,39 +53,9 @@ export async function getProjects() {
   return projects;
 }
 
-// Get single project by ID
+// Get single project by ID (uses cached version)
 export async function getProject(projectId: string) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return null;
-  }
-
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      OR: [
-        { ownerId: user.id },
-        { members: { some: { userId: user.id } } },
-      ],
-    },
-    include: {
-      owner: {
-        select: { id: true, name: true, email: true, avatar: true },
-      },
-      members: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, avatar: true },
-          },
-        },
-      },
-      _count: {
-        select: { tasks: true },
-      },
-    },
-  });
-
-  return project;
+  return getProjectWithAccess(projectId);
 }
 
 // Create new project
@@ -223,24 +183,9 @@ export async function deleteProject(projectId: string): Promise<ActionResponse> 
   }
 }
 
-// Get current user profile
+// Get current user profile (uses cached version)
 export async function getCurrentProfile() {
-  const user = await getCurrentUser();
-  if (!user) {
-    return null;
-  }
-
-  const profile = await prisma.profile.findUnique({
-    where: { id: user.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatar: true,
-    },
-  });
-
-  return profile;
+  return getCachedProfile();
 }
 
 // ==================== INVITATIONS ====================

@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser, checkProjectAccess } from "@/lib/auth";
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -14,32 +14,6 @@ export type ActionResponse = {
   success: boolean;
   error?: string;
 };
-
-// Helper to get current user
-async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  return user;
-}
-
-// Check if user has access to project
-async function checkProjectAccess(projectId: string, userId: string) {
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-    },
-  });
-
-  return !!project;
-}
 
 // Get all tasks for a project grouped by status
 export async function getTasksByProject(projectId: string) {
