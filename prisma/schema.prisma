@@ -124,7 +124,8 @@ model Task {
 
 model Invitation {
   id        String           @id @default(cuid())
-  email     String
+  email     String?          // Optional for public links
+  isPublic  Boolean          @default(false) @map("is_public")
   status    InvitationStatus @default(PENDING)
   token     String           @unique @default(cuid())
   expiresAt DateTime         @map("expires_at")
@@ -137,7 +138,7 @@ model Invitation {
   senderId String  @map("sender_id") @db.Uuid
   sender   Profile @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
 
-  @@unique([email, projectId])
+  @@unique([email, projectId]) // Only applies when email is not null
   @@index([token])
   @@map("invitations")
 }

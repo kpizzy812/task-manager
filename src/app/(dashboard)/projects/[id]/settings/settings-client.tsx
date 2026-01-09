@@ -60,8 +60,9 @@ type Member = {
 
 type Invitation = {
   id: string;
-  email: string;
+  email: string | null;
   token: string;
+  isPublic: boolean;
   createdAt: Date;
   sender: {
     id: string;

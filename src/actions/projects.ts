@@ -20,6 +20,10 @@ export type ActionResponse = {
   error?: string;
 };
 
+export type InviteResponse = ActionResponse & {
+  token?: string;
+};
+
 // Get all projects for current user
 export async function getProjects() {
   const user = await getCurrentUser();
@@ -190,11 +194,11 @@ export async function getCurrentProfile() {
 
 // ==================== INVITATIONS ====================
 
-// Invite member to project
+// Invite member to project by email
 export async function inviteMember(
   projectId: string,
   formData: FormData
-): Promise<ActionResponse> {
+): Promise<InviteResponse> {
   const user = await getCurrentUser();
   if (!user) {
     return { success: false, error: "Необходима авторизация" };
@@ -250,19 +254,60 @@ export async function inviteMember(
   }
 
   try {
-    await prisma.invitation.create({
+    const invitation = await prisma.invitation.create({
       data: {
         email,
         projectId,
         senderId: user.id,
+        isPublic: false,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
 
     revalidatePath(`/projects/${projectId}/settings`);
-    return { success: true };
+    return { success: true, token: invitation.token };
   } catch {
-    return { success: false, error: "Ошибка при отправке приглашения" };
+    return { success: false, error: "Ошибка при создании приглашения" };
+  }
+}
+
+// Create public invite link (no email required)
+export async function createPublicInviteLink(
+  projectId: string
+): Promise<InviteResponse> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "Необходима авторизация" };
+  }
+
+  // Check if user is owner or admin
+  const membership = await prisma.projectMember.findFirst({
+    where: {
+      projectId,
+      userId: user.id,
+      role: { in: ["OWNER", "ADMIN"] },
+    },
+  });
+
+  if (!membership) {
+    return { success: false, error: "Нет прав для создания приглашения" };
+  }
+
+  try {
+    const invitation = await prisma.invitation.create({
+      data: {
+        email: null,
+        projectId,
+        senderId: user.id,
+        isPublic: true,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+
+    revalidatePath(`/projects/${projectId}/settings`);
+    return { success: true, token: invitation.token };
+  } catch {
+    return { success: false, error: "Ошибка при создании ссылки" };
   }
 }
 
@@ -398,9 +443,11 @@ export async function acceptInvitation(token: string): Promise<ActionResponse> {
     return { success: false, error: "Срок действия приглашения истёк" };
   }
 
-  // Check if email matches
-  if (invitation.email.toLowerCase() !== profile.email.toLowerCase()) {
-    return { success: false, error: "Это приглашение предназначено для другого email" };
+  // Check if email matches (only for non-public invitations)
+  if (!invitation.isPublic && invitation.email) {
+    if (invitation.email.toLowerCase() !== profile.email.toLowerCase()) {
+      return { success: false, error: "Это приглашение предназначено для другого email" };
+    }
   }
 
   // Check if already a member
@@ -412,15 +459,16 @@ export async function acceptInvitation(token: string): Promise<ActionResponse> {
   });
 
   if (existingMember) {
-    // Update invitation status
-    await prisma.invitation.update({
-      where: { id: invitation.id },
-      data: { status: "ACCEPTED" },
-    });
     return { success: false, error: "Вы уже являетесь участником этого проекта" };
   }
 
   try {
+    // For public links, don't mark as ACCEPTED (can be reused)
+    // For email-specific links, mark as ACCEPTED
+    const updateData = invitation.isPublic
+      ? {} // Don't update status for public links
+      : { status: "ACCEPTED" as const };
+
     await prisma.$transaction([
       prisma.projectMember.create({
         data: {
@@ -429,10 +477,13 @@ export async function acceptInvitation(token: string): Promise<ActionResponse> {
           role: "MEMBER",
         },
       }),
-      prisma.invitation.update({
-        where: { id: invitation.id },
-        data: { status: "ACCEPTED" },
-      }),
+      ...(Object.keys(updateData).length > 0
+        ? [prisma.invitation.update({
+            where: { id: invitation.id },
+            data: updateData,
+          })]
+        : []
+      ),
     ]);
 
     revalidatePath("/dashboard");

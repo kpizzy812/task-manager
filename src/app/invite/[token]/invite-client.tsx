@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Check, X, Mail, Users } from "lucide-react";
+import { Loader2, Check, X, Mail, Users, Globe } from "lucide-react";
 import { toast } from "sonner";
 
 import { acceptInvitation, declineInvitation } from "@/actions/projects";
@@ -20,7 +20,8 @@ import {
 type InvitePageClientProps = {
   token: string;
   invitation: {
-    email: string;
+    email: string | null;
+    isPublic: boolean;
     project: {
       name: string;
       description: string | null;
@@ -42,7 +43,12 @@ export function InvitePageClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const emailMatches = userEmail?.toLowerCase() === invitation.email.toLowerCase();
+  // For public links, any logged-in user can accept
+  // For email-specific links, only matching email can accept
+  const canAccept = invitation.isPublic
+    ? isLoggedIn
+    : isLoggedIn &&
+      userEmail?.toLowerCase() === invitation.email?.toLowerCase();
 
   function handleAccept() {
     startTransition(async () => {
@@ -92,19 +98,32 @@ export function InvitePageClient({
             )}
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4" />
-            <span>Приглашение для: {invitation.email}</span>
-          </div>
-
-          {!isLoggedIn && (
-            <div className="rounded-lg bg-amber-50 p-4 text-center text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              Для принятия приглашения необходимо войти в аккаунт или
-              зарегистрироваться с email: <strong>{invitation.email}</strong>
+          {invitation.isPublic ? (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Globe className="h-4 w-4" />
+              <span>Публичное приглашение</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <span>Приглашение для: {invitation.email}</span>
             </div>
           )}
 
-          {isLoggedIn && !emailMatches && (
+          {!isLoggedIn && (
+            <div className="rounded-lg bg-amber-50 p-4 text-center text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              {invitation.isPublic ? (
+                <>Для принятия приглашения необходимо войти в аккаунт или зарегистрироваться</>
+              ) : (
+                <>
+                  Для принятия приглашения необходимо войти в аккаунт или
+                  зарегистрироваться с email: <strong>{invitation.email}</strong>
+                </>
+              )}
+            </div>
+          )}
+
+          {isLoggedIn && !invitation.isPublic && !canAccept && (
             <div className="rounded-lg bg-red-50 p-4 text-center text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
               Это приглашение предназначено для другого email ({invitation.email}).
               Вы авторизованы как {userEmail}.
@@ -121,28 +140,34 @@ export function InvitePageClient({
                 <Link href={`/register?invite=${token}`}>Зарегистрироваться</Link>
               </Button>
             </>
-          ) : emailMatches ? (
+          ) : canAccept ? (
             <div className="flex w-full gap-3">
+              {!invitation.isPublic && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleDecline}
+                  disabled={isPending}
+                >
+                  {isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="mr-2 h-4 w-4" />
+                  )}
+                  Отклонить
+                </Button>
+              )}
               <Button
-                variant="outline"
-                className="flex-1"
-                onClick={handleDecline}
+                className={invitation.isPublic ? "w-full" : "flex-1"}
+                onClick={handleAccept}
                 disabled={isPending}
               >
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <X className="mr-2 h-4 w-4" />
-                )}
-                Отклонить
-              </Button>
-              <Button className="flex-1" onClick={handleAccept} disabled={isPending}>
-                {isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
                   <Check className="mr-2 h-4 w-4" />
                 )}
-                Принять
+                Присоединиться
               </Button>
             </div>
           ) : (

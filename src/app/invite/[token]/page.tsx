@@ -40,6 +40,7 @@ export default async function InvitePage({ params }: Props) {
       token={token}
       invitation={{
         email: invitation.email,
+        isPublic: invitation.isPublic,
         project: {
           name: invitation.project.name,
           description: invitation.project.description,
