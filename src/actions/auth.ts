@@ -108,6 +108,11 @@ export async function register(
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+  // Build callback URL with invite token if provided
+  const callbackUrl = inviteToken
+    ? `${siteUrl}/auth/callback?next=/invite/${inviteToken}`
+    : `${siteUrl}/auth/callback`;
+
   const { data, error } = await supabase.auth.signUp({
     email: validated.data.email,
     password: validated.data.password,
@@ -115,7 +120,7 @@ export async function register(
       data: {
         name: validated.data.name,
       },
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+      emailRedirectTo: callbackUrl,
     },
   });
 
