@@ -29,16 +29,14 @@ export function KanbanBoard({
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // Track pending server update to prevent sync overwrite
-  const pendingUpdateRef = useRef(false);
   // Store previous state for rollback on cancel/error
   const previousTasksRef = useRef<Record<TaskStatus, Task[]> | null>(null);
+  // Track server sync version to handle stale updates
+  const localVersionRef = useRef(0);
 
-  // Sync local state when server data changes (after router.refresh())
+  // Sync local state when server data changes
   useEffect(() => {
-    if (!pendingUpdateRef.current) {
-      setTasks(initialTasks);
-    }
+    setTasks(initialTasks);
   }, [initialTasks]);
 
   function handleAddTask(status: TaskStatus) {
@@ -156,38 +154,29 @@ export function KanbanBoard({
           }
 
           const taskId = String(source.id);
+          // Increment version to track this update
+          const updateVersion = ++localVersionRef.current;
+          // Capture rollback state
+          const rollbackState = previousTasksRef.current;
+          previousTasksRef.current = null;
 
-          // Get final position from current state
-          setTasks((currentTasks) => {
-            const currentColumn = findTaskColumn(taskId, currentTasks);
-            if (!currentColumn) return currentTasks;
+          // Get final position from current state and send to server
+          const currentColumn = findTaskColumn(taskId, tasks);
+          if (!currentColumn) return;
 
-            const taskIndex = currentTasks[currentColumn].findIndex(
-              (t) => t.id === taskId
-            );
+          const taskIndex = tasks[currentColumn].findIndex(
+            (t) => t.id === taskId
+          );
 
-            // Set pending flag to prevent useEffect from overwriting
-            pendingUpdateRef.current = true;
-
-            // Send to server in background
-            updateTaskOrder(taskId, currentColumn, taskIndex)
-              .then((result) => {
-                if (result.error) {
-                  toast.error(result.error);
-                  // Rollback on error
-                  if (previousTasksRef.current) {
-                    setTasks(previousTasksRef.current);
-                  }
-                }
-              })
-              .finally(() => {
-                previousTasksRef.current = null;
-                setTimeout(() => {
-                  pendingUpdateRef.current = false;
-                }, 500);
-              });
-
-            return currentTasks;
+          // Send to server in background (fire and forget for UI)
+          updateTaskOrder(taskId, currentColumn, taskIndex).then((result) => {
+            if (result.error) {
+              toast.error(result.error);
+              // Only rollback if no newer updates happened
+              if (localVersionRef.current === updateVersion && rollbackState) {
+                setTasks(rollbackState);
+              }
+            }
           });
         }}
       >
