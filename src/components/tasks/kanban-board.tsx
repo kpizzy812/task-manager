@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
 import { toast } from "sonner";
@@ -26,6 +26,11 @@ export function KanbanBoard({
   members,
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState(initialTasks);
+
+  // Sync local state when server data changes (after router.refresh())
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<TaskStatus>("TODO");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
