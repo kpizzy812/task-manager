@@ -8,9 +8,11 @@ export const updateProfileSchema = z.object({
     .transform((v) => v.trim()),
   avatar: z
     .string()
-    .url("Введите корректный URL")
-    .nullable()
-    .optional(),
+    .optional()
+    .refine(
+      (v) => !v || v === "" || z.string().url().safeParse(v).success,
+      "Введите корректный URL"
+    ),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

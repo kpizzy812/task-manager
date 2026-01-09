@@ -82,7 +82,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResponse>
       where: { id: user.id },
       data: {
         name: validated.data.name,
-        avatar: validated.data.avatar,
+        avatar: validated.data.avatar || null,
       },
     });
 
