@@ -11,6 +11,7 @@ import { type Task, type ProjectMember } from "@/types/task";
 import { KanbanColumn } from "./kanban-column";
 import { CreateTaskModal } from "./create-task-modal";
 import { TaskDetailsModal } from "./task-details-modal";
+import { MobileKanbanView } from "./mobile-kanban-view";
 
 type KanbanBoardProps = {
   projectId: string;
@@ -107,7 +108,19 @@ export function KanbanBoard({
 
   return (
     <>
-      <DragDropProvider
+      {/* Mobile view with tabs */}
+      <div className="md:hidden">
+        <MobileKanbanView
+          projectId={projectId}
+          tasks={tasks}
+          members={members}
+          onTasksChange={setTasks}
+        />
+      </div>
+
+      {/* Desktop view with drag-and-drop */}
+      <div className="hidden md:block">
+        <DragDropProvider
         onDragStart={() => {
           // Save current state for potential rollback
           previousTasksRef.current = tasks;
@@ -257,19 +270,20 @@ export function KanbanBoard({
         </div>
       </DragDropProvider>
 
-      <CreateTaskModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        projectId={projectId}
-        defaultStatus={createStatus}
-        members={members}
-      />
+        <CreateTaskModal
+          open={createModalOpen}
+          onOpenChange={setCreateModalOpen}
+          projectId={projectId}
+          defaultStatus={createStatus}
+          members={members}
+        />
 
-      <TaskDetailsModal
-        task={selectedTask}
-        onClose={() => setSelectedTask(null)}
-        members={members}
-      />
+        <TaskDetailsModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          members={members}
+        />
+      </div>
     </>
   );
 }
