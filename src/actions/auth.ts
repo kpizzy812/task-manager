@@ -61,6 +61,8 @@ export async function register(
 
   const supabase = await createClient();
 
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   const { data, error } = await supabase.auth.signUp({
     email: validated.data.email,
     password: validated.data.password,
@@ -68,6 +70,7 @@ export async function register(
       data: {
         name: validated.data.name,
       },
+      emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   });
 
