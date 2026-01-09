@@ -28,10 +28,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect to dashboard if already authenticated and trying to access auth routes
+  // Redirect if already authenticated and trying to access auth routes
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    // If there's an invite token, redirect to invite page instead of dashboard
+    const inviteToken = request.nextUrl.searchParams.get("invite");
+    if (inviteToken) {
+      url.pathname = `/invite/${inviteToken}`;
+      url.searchParams.delete("invite");
+    } else {
+      url.pathname = "/dashboard";
+    }
     return NextResponse.redirect(url);
   }
 

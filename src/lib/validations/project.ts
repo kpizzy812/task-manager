@@ -24,5 +24,13 @@ export const updateProjectSchema = z.object({
     .nullable(),
 });
 
+export const inviteMemberSchema = z.object({
+  email: z
+    .string()
+    .email("Введите корректный email")
+    .max(255, "Email должен быть не более 255 символов"),
+});
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;

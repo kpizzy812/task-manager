@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -30,6 +31,8 @@ import {
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -45,7 +48,7 @@ export function LoginForm() {
       formData.append("email", data.email);
       formData.append("password", data.password);
 
-      const result = await login(formData);
+      const result = await login(formData, inviteToken ?? undefined);
 
       if (result?.error) {
         toast.error(result.error);
@@ -112,7 +115,10 @@ export function LoginForm() {
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
           Нет аккаунта?{" "}
-          <Link href="/register" className="text-primary hover:underline">
+          <Link
+            href={inviteToken ? `/register?invite=${inviteToken}` : "/register"}
+            className="text-primary hover:underline"
+          >
             Зарегистрироваться
           </Link>
         </p>
