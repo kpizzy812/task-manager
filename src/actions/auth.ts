@@ -8,9 +8,13 @@ import { loginSchema, registerSchema } from "@/lib/validations/auth";
 export type ActionResponse = {
   success: boolean;
   error?: string;
+  message?: string; // For success messages (e.g., email confirmation)
 };
 
-export async function login(formData: FormData): Promise<ActionResponse> {
+export async function login(
+  formData: FormData,
+  inviteToken?: string
+): Promise<ActionResponse> {
   const rawData = {
     email: formData.get("email")?.toString() ?? "",
     password: formData.get("password")?.toString() ?? "",
@@ -31,10 +35,18 @@ export async function login(formData: FormData): Promise<ActionResponse> {
     return { success: false, error: "Неверный email или пароль" };
   }
 
+  // Redirect to invite page if token provided
+  if (inviteToken) {
+    redirect(`/invite/${inviteToken}`);
+  }
+
   redirect("/dashboard");
 }
 
-export async function register(formData: FormData): Promise<ActionResponse> {
+export async function register(
+  formData: FormData,
+  inviteToken?: string
+): Promise<ActionResponse> {
   const rawData = {
     name: formData.get("name")?.toString() ?? "",
     email: formData.get("email")?.toString() ?? "",
@@ -73,8 +85,8 @@ export async function register(formData: FormData): Promise<ActionResponse> {
   // Check if email confirmation is required (session will be null)
   if (!data.session) {
     return {
-      success: false,
-      error: "Проверьте email для подтверждения регистрации"
+      success: true,
+      message: "Проверьте email для подтверждения регистрации",
     };
   }
 
@@ -94,6 +106,11 @@ export async function register(formData: FormData): Promise<ActionResponse> {
     if (!isDuplicate) {
       console.error("Failed to create profile:", err);
     }
+  }
+
+  // Redirect to invite page if token provided
+  if (inviteToken) {
+    redirect(`/invite/${inviteToken}`);
   }
 
   redirect("/dashboard");
