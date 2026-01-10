@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -29,12 +29,24 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+const COOLDOWN_SECONDS = 20;
+
 export function RegisterForm() {
   const [isPending, startTransition] = useTransition();
+  const [cooldown, setCooldown] = useState(0);
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
   const prefillEmail = searchParams.get("email");
   const projectName = searchParams.get("project");
+
+  // Cooldown timer to prevent rate limiting (Supabase 429)
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -47,6 +59,8 @@ export function RegisterForm() {
   });
 
   function onSubmit(data: RegisterInput) {
+    if (cooldown > 0) return;
+
     startTransition(async () => {
       const formData = new FormData();
       formData.append("name", data.name);
@@ -58,9 +72,15 @@ export function RegisterForm() {
 
       if (result?.error) {
         toast.error(result.error);
+        // Start cooldown on rate limit error
+        if (result.error.includes("security") || result.error.includes("429")) {
+          setCooldown(COOLDOWN_SECONDS);
+        }
       } else if (result?.message) {
         toast.success(result.message);
         form.reset();
+        // Start cooldown after successful registration
+        setCooldown(COOLDOWN_SECONDS);
       }
     });
   }
@@ -156,9 +176,9 @@ export function RegisterForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button type="submit" className="w-full" disabled={isPending || cooldown > 0}>
               {isPending && <Loader2 className="animate-spin" />}
-              Зарегистрироваться
+              {cooldown > 0 ? `Подождите ${cooldown} сек.` : "Зарегистрироваться"}
             </Button>
           </form>
         </Form>
