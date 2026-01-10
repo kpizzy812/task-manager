@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { getProject } from "@/actions/projects";
 import { getTasksByProject, getProjectMembers } from "@/actions/tasks";
+import { getCurrentUser, getUserProjectRole } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { type TaskStatus } from "@/lib/validations/task";
@@ -32,13 +33,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProjectPage({ params }: Props) {
   const { id } = await params;
-  const [project, tasks, members] = await Promise.all([
+  const user = await getCurrentUser();
+
+  if (!user) {
+    notFound();
+  }
+
+  const [project, tasks, members, userRole] = await Promise.all([
     getProject(id),
     getTasksByProject(id),
     getProjectMembers(id),
+    getUserProjectRole(id, user.id),
   ]);
 
-  if (!project || !tasks) {
+  if (!project || !tasks || !userRole) {
     notFound();
   }
 
@@ -51,15 +59,15 @@ export default async function ProjectPage({ params }: Props) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+    <div className="space-y-6 min-w-0">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold tracking-tight truncate">{project.name}</h1>
           {project.description && (
-            <p className="text-muted-foreground">{project.description}</p>
+            <p className="text-muted-foreground line-clamp-2">{project.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="icon" asChild>
             <Link href={`/projects/${id}/analytics`}>
               <BarChart3 className="h-4 w-4" />
@@ -79,6 +87,8 @@ export default async function ProjectPage({ params }: Props) {
         projectId={id}
         initialTasks={transformedTasks}
         members={members}
+        currentUserId={user.id}
+        userRole={userRole}
       />
     </div>
   );

@@ -13,10 +13,14 @@ import { CreateTaskModal } from "./create-task-modal";
 import { TaskDetailsModal } from "./task-details-modal";
 import { MobileKanbanView } from "./mobile-kanban-view";
 
+type UserRole = "OWNER" | "ADMIN" | "MEMBER";
+
 type KanbanBoardProps = {
   projectId: string;
   initialTasks: Record<TaskStatus, Task[]>;
   members: ProjectMember[];
+  currentUserId: string;
+  userRole: UserRole;
 };
 
 const COLUMNS: TaskStatus[] = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -25,6 +29,8 @@ export function KanbanBoard({
   projectId,
   initialTasks,
   members,
+  currentUserId,
+  userRole,
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState(initialTasks);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -115,6 +121,8 @@ export function KanbanBoard({
           tasks={tasks}
           members={members}
           onTasksChange={setTasks}
+          currentUserId={currentUserId}
+          userRole={userRole}
         />
       </div>
 
@@ -282,6 +290,8 @@ export function KanbanBoard({
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           members={members}
+          currentUserId={currentUserId}
+          userRole={userRole}
         />
       </div>
     </>

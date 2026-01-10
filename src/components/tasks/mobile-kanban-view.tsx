@@ -14,11 +14,15 @@ import { MobileTaskCard } from "./mobile-task-card";
 import { CreateTaskModal } from "./create-task-modal";
 import { TaskDetailsModal } from "./task-details-modal";
 
+type UserRole = "OWNER" | "ADMIN" | "MEMBER";
+
 type MobileKanbanViewProps = {
   projectId: string;
   tasks: Record<TaskStatus, Task[]>;
   members: ProjectMember[];
   onTasksChange: (tasks: Record<TaskStatus, Task[]>) => void;
+  currentUserId: string;
+  userRole: UserRole;
 };
 
 const COLUMNS: TaskStatus[] = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -35,6 +39,8 @@ export function MobileKanbanView({
   tasks,
   members,
   onTasksChange,
+  currentUserId,
+  userRole,
 }: MobileKanbanViewProps) {
   const [activeTab, setActiveTab] = useState<TaskStatus>("TODO");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -144,6 +150,8 @@ export function MobileKanbanView({
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
         members={members}
+        currentUserId={currentUserId}
+        userRole={userRole}
       />
     </>
   );

@@ -57,19 +57,32 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
+type UserRole = "OWNER" | "ADMIN" | "MEMBER";
+
 type TaskDetailsModalProps = {
   task: Task | null;
   onClose: () => void;
   members: ProjectMember[];
+  currentUserId: string;
+  userRole: UserRole;
 };
 
 export function TaskDetailsModal({
   task,
   onClose,
   members,
+  currentUserId,
+  userRole,
 }: TaskDetailsModalProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // Check if user can delete this task
+  // OWNER and ADMIN can delete any task, MEMBER can only delete their own
+  const canDelete =
+    userRole === "OWNER" ||
+    userRole === "ADMIN" ||
+    task?.creator.id === currentUserId;
 
   const form = useForm<UpdateTaskInput>({
     resolver: zodResolver(updateTaskSchema),
@@ -172,7 +185,7 @@ export function TaskDetailsModal({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="status"
@@ -230,7 +243,7 @@ export function TaskDetailsModal({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="assigneeId"
@@ -306,36 +319,38 @@ export function TaskDetailsModal({
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled={isPending}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Удалить
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Удалить задачу?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Это действие нельзя отменить. Задача &quot;{task.title}&quot;
-                      будет удалена навсегда.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              {canDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={isPending}
                     >
+                      <Trash2 className="mr-2 h-4 w-4" />
                       Удалить
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Удалить задачу?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Это действие нельзя отменить. Задача &quot;{task.title}&quot;
+                        будет удалена навсегда.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Отмена</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Удалить
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
 
               <div className="flex gap-2">
                 <Button
