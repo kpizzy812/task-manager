@@ -1,5 +1,6 @@
 "use server";
 
+import { isPast, isToday } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
@@ -89,14 +90,15 @@ export async function getProjectAnalytics(
     },
   });
 
-  const now = new Date();
-
   // Calculate metrics
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "DONE").length;
-  const overdueTasksList = tasks.filter(
-    (t) => t.deadline && new Date(t.deadline) < now && t.status !== "DONE"
-  );
+  // Match the same logic as task-deadline-indicator: overdue if past AND not today
+  const overdueTasksList = tasks.filter((t) => {
+    if (!t.deadline || t.status === "DONE") return false;
+    const deadlineDate = new Date(t.deadline);
+    return isPast(deadlineDate) && !isToday(deadlineDate);
+  });
   const overdueTasks = overdueTasksList.length;
   const completionRate =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
