@@ -41,7 +41,12 @@ export default async function InvitePage({ params }: Props) {
   if (!profile && invitation.email) {
     const emailExists = await checkEmailExists(invitation.email);
     const targetPath = emailExists ? "/login" : "/register";
-    redirect(`${targetPath}?invite=${token}&email=${encodeURIComponent(invitation.email)}`);
+    const params = new URLSearchParams({
+      invite: token,
+      email: invitation.email,
+      project: invitation.project.name,
+    });
+    redirect(`${targetPath}?${params.toString()}`);
   }
 
   return (

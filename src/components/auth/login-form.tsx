@@ -34,6 +34,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
   const prefillEmail = searchParams.get("email");
+  const projectName = searchParams.get("project");
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -64,6 +65,11 @@ export function LoginForm() {
         <CardDescription>
           Введите email и пароль для входа в аккаунт
         </CardDescription>
+        {inviteToken && projectName && (
+          <div className="mt-3 rounded-lg bg-primary/10 p-3 text-sm text-primary">
+            После входа вы будете добавлены в проект «{projectName}»
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -119,7 +125,7 @@ export function LoginForm() {
           <Link
             href={
               inviteToken
-                ? `/register?invite=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+                ? `/register?invite=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}${projectName ? `&project=${encodeURIComponent(projectName)}` : ""}`
                 : "/register"
             }
             className="text-primary hover:underline"

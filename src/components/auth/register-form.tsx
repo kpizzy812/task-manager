@@ -34,6 +34,7 @@ export function RegisterForm() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
   const prefillEmail = searchParams.get("email");
+  const projectName = searchParams.get("project");
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -71,6 +72,11 @@ export function RegisterForm() {
         <CardDescription>
           Заполните форму для регистрации
         </CardDescription>
+        {inviteToken && projectName && (
+          <div className="mt-3 rounded-lg bg-primary/10 p-3 text-sm text-primary">
+            После регистрации вы будете добавлены в проект «{projectName}»
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -163,7 +169,7 @@ export function RegisterForm() {
           <Link
             href={
               inviteToken
-                ? `/login?invite=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+                ? `/login?invite=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}${projectName ? `&project=${encodeURIComponent(projectName)}` : ""}`
                 : "/login"
             }
             className="text-primary hover:underline"
