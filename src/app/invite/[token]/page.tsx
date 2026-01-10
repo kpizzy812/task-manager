@@ -1,7 +1,8 @@
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { getInvitationByToken, getCurrentProfile } from "@/actions/projects";
+import { checkEmailExists } from "@/actions/auth";
 import { InvitePageClient } from "./invite-client";
 
 type Props = {
@@ -33,6 +34,14 @@ export default async function InvitePage({ params }: Props) {
 
   if (!invitation) {
     notFound();
+  }
+
+  // If user is not logged in and this is an email-specific invite,
+  // redirect to login or register with prefilled email
+  if (!profile && invitation.email) {
+    const emailExists = await checkEmailExists(invitation.email);
+    const targetPath = emailExists ? "/login" : "/register";
+    redirect(`${targetPath}?invite=${token}&email=${encodeURIComponent(invitation.email)}`);
   }
 
   return (

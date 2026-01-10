@@ -33,12 +33,13 @@ export function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
+  const prefillEmail = searchParams.get("email");
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       name: "",
-      email: "",
+      email: prefillEmail || "",
       password: "",
       confirmPassword: "",
     },
@@ -160,7 +161,11 @@ export function RegisterForm() {
         <p className="text-sm text-muted-foreground">
           Уже есть аккаунт?{" "}
           <Link
-            href={inviteToken ? `/login?invite=${inviteToken}` : "/login"}
+            href={
+              inviteToken
+                ? `/login?invite=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+                : "/login"
+            }
             className="text-primary hover:underline"
           >
             Войти

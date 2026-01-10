@@ -119,6 +119,8 @@ export async function register(
     options: {
       data: {
         name: validated.data.name,
+        // Store invite token in metadata to preserve it through email confirmation
+        inviteToken: inviteToken || null,
       },
       emailRedirectTo: callbackUrl,
     },
@@ -173,4 +175,12 @@ export async function logout(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const profile = await prisma.profile.findUnique({
+    where: { email: email.toLowerCase() },
+    select: { id: true },
+  });
+  return !!profile;
 }

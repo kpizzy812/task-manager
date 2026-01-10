@@ -33,11 +33,12 @@ export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
+  const prefillEmail = searchParams.get("email");
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      email: prefillEmail || "",
       password: "",
     },
   });
@@ -116,7 +117,11 @@ export function LoginForm() {
         <p className="text-sm text-muted-foreground">
           Нет аккаунта?{" "}
           <Link
-            href={inviteToken ? `/register?invite=${inviteToken}` : "/register"}
+            href={
+              inviteToken
+                ? `/register?invite=${inviteToken}${prefillEmail ? `&email=${encodeURIComponent(prefillEmail)}` : ""}`
+                : "/register"
+            }
             className="text-primary hover:underline"
           >
             Зарегистрироваться

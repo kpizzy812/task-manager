@@ -112,6 +112,30 @@ export async function GET(request: NextRequest) {
 
   console.log("[AUTH CALLBACK] User verified:", user.id, user.email);
 
+  // Check for invite token in user metadata (preserved through email confirmation)
+  const inviteToken = user.user_metadata?.inviteToken;
+  let finalRedirectUrl = redirectUrl;
+
+  // If we have an invite token in metadata and current redirect is to dashboard,
+  // redirect to invite page instead
+  if (inviteToken && next === "/dashboard") {
+    finalRedirectUrl = `${baseUrl}/invite/${inviteToken}`;
+    console.log("[AUTH CALLBACK] Found invite token in metadata, redirecting to:", finalRedirectUrl);
+  }
+
+  // Update response with new redirect URL
+  const finalResponse = NextResponse.redirect(finalRedirectUrl);
+
+  // Copy cookies from original response
+  response.cookies.getAll().forEach((cookie) => {
+    finalResponse.cookies.set(cookie.name, cookie.value, {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+  });
+
   // Create or update profile
   try {
     await prisma.profile.upsert({
@@ -139,5 +163,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return response;
+  return finalResponse;
 }
