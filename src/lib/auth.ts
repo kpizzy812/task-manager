@@ -47,6 +47,31 @@ export const checkProjectAccess = cache(
   }
 );
 
+// Cached function to get user's role in a project
+export const getUserProjectRole = cache(
+  async (projectId: string, userId: string) => {
+    // Check if user is owner
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, ownerId: userId },
+      select: { id: true },
+    });
+
+    if (project) {
+      return "OWNER" as const;
+    }
+
+    // Check membership role
+    const member = await prisma.projectMember.findUnique({
+      where: {
+        userId_projectId: { userId, projectId },
+      },
+      select: { role: true },
+    });
+
+    return member?.role ?? null;
+  }
+);
+
 // Cached function to get project with access check
 export const getProjectWithAccess = cache(async (projectId: string) => {
   const user = await getCurrentUser();

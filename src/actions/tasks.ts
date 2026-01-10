@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, checkProjectAccess } from "@/lib/auth";
+import { getCurrentUser, checkProjectAccess, getUserProjectRole } from "@/lib/auth";
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -263,16 +263,22 @@ export async function deleteTask(taskId: string): Promise<ActionResponse> {
 
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { projectId: true },
+    select: { projectId: true, creatorId: true },
   });
 
   if (!task) {
     return { success: false, error: "Задача не найдена" };
   }
 
-  const hasAccess = await checkProjectAccess(task.projectId, user.id);
-  if (!hasAccess) {
+  const role = await getUserProjectRole(task.projectId, user.id);
+  if (!role) {
     return { success: false, error: "Нет доступа к проекту" };
+  }
+
+  // MEMBER can only delete their own tasks
+  // OWNER and ADMIN can delete any task
+  if (role === "MEMBER" && task.creatorId !== user.id) {
+    return { success: false, error: "Вы можете удалять только свои задачи" };
   }
 
   try {
