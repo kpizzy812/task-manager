@@ -10,7 +10,7 @@ import {
   AI_GENERATE_RATE_LIMIT,
   AI_DIGEST_RATE_LIMIT,
 } from "@/lib/rate-limit";
-import { chatCompletion, parseAIJson } from "@/lib/ai/openrouter";
+import { chatCompletion, parseAIJson } from "@/lib/ai/deepseek";
 import { buildTaskGenerationPrompt, buildDigestPrompt } from "@/lib/ai/prompts";
 import { handleAIError } from "@/lib/ai/errors";
 import {

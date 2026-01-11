@@ -1,36 +1,34 @@
 /**
- * OpenRouter API client
- * Unified API for multiple LLM providers (OpenAI, Anthropic, etc.)
+ * DeepSeek API client
+ * OpenAI-compatible API
  */
 
 import { type ChatMessage, type StreamOptions } from "./types";
 import { AIError } from "./errors";
 
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "openai/gpt-4o-mini";
+const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+const DEFAULT_MODEL = "deepseek-chat";
 
 /**
- * Send a chat completion request to OpenRouter
+ * Send a chat completion request to DeepSeek
  */
 export async function chatCompletion(
   messages: ChatMessage[],
   options?: StreamOptions
 ): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
-    throw new AIError(401, "OPENROUTER_API_KEY not configured");
+    throw new AIError(401, "DEEPSEEK_API_KEY not configured");
   }
 
-  const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+  const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
 
-  const response = await fetch(OPENROUTER_API_URL, {
+  const response = await fetch(DEEPSEEK_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-      "X-Title": "Task Manager",
     },
     body: JSON.stringify({
       model,
