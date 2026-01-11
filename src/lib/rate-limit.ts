@@ -90,3 +90,14 @@ export const REGISTER_RATE_LIMIT: RateLimitConfig = {
   maxAttempts: 3,
   windowMs: 60 * 60 * 1000, // 1 hour
 };
+
+// AI rate limits
+export const AI_GENERATE_RATE_LIMIT: RateLimitConfig = {
+  maxAttempts: 20,
+  windowMs: 60 * 1000, // 20 requests per minute
+};
+
+export const AI_DIGEST_RATE_LIMIT: RateLimitConfig = {
+  maxAttempts: 5,
+  windowMs: 30 * 60 * 1000, // 5 requests per 30 minutes
+};

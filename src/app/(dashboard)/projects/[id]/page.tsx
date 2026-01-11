@@ -8,6 +8,7 @@ import { getTasksByProject, getProjectMembers } from "@/actions/tasks";
 import { getCurrentUser, getUserProjectRole } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
+import { DigestCard } from "@/components/ai/digest-card";
 import { type TaskStatus } from "@/lib/validations/task";
 import { type Task } from "@/types/task";
 
@@ -82,6 +83,8 @@ export default async function ProjectPage({ params }: Props) {
           </Button>
         </div>
       </div>
+
+      <DigestCard projectId={id} />
 
       <KanbanBoard
         projectId={id}

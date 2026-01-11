@@ -16,6 +16,9 @@ import {
   type TaskStatus,
 } from "@/lib/validations/task";
 import { type ProjectMember } from "@/types/task";
+import { AIGenerateButton } from "./ai-generate-button";
+import { type AIGeneratedTask } from "@/lib/validations/ai";
+import { addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,6 +98,18 @@ export function CreateTaskModal({
     }
   }, [open, defaultStatus, form]);
 
+  // Handle AI generated data
+  function handleAIGenerated(data: AIGeneratedTask) {
+    form.setValue("description", data.description);
+    form.setValue("priority", data.priority);
+    form.setValue(
+      "deadline",
+      addDays(new Date(), data.deadlineDays).toISOString()
+    );
+  }
+
+  const titleValue = form.watch("title");
+
   function onSubmit(data: CreateTaskInput) {
     startTransition(async () => {
       const formData = new FormData();
@@ -138,13 +153,20 @@ export function CreateTaskModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Название</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Введите название задачи"
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input
+                        placeholder="Введите название задачи"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <AIGenerateButton
+                      title={titleValue}
+                      onGenerated={handleAIGenerated}
                       disabled={isPending}
-                      {...field}
                     />
-                  </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
