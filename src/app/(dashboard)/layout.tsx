@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentProfile, getProjects } from "@/actions/projects";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { AIChatWidget } from "@/components/ai/ai-chat-widget";
 
 export default async function DashboardLayout({
   children,
@@ -23,8 +24,11 @@ export default async function DashboardLayout({
   }));
 
   return (
-    <DashboardShell user={profile} projects={sidebarProjects}>
-      {children}
-    </DashboardShell>
+    <>
+      <DashboardShell user={profile} projects={sidebarProjects}>
+        {children}
+      </DashboardShell>
+      <AIChatWidget />
+    </>
   );
 }

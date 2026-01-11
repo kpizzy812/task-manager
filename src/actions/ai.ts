@@ -18,7 +18,8 @@ import {
   generateTaskInputSchema,
   type AIGeneratedTask,
 } from "@/lib/validations/ai";
-import { type DigestTasksInput } from "@/lib/ai/types";
+import { type DigestTasksInput, type AIGeneratedProject } from "@/lib/ai/types";
+import { addDays } from "date-fns";
 
 /**
  * Generate task details using AI
@@ -173,5 +174,71 @@ export async function getProjectDigest(projectId: string): Promise<{
   } catch (error) {
     console.error("AI digest error:", error);
     return { error: handleAIError(error) };
+  }
+}
+
+/**
+ * Create project with tasks from AI-generated data
+ */
+export async function createProjectFromAI(data: AIGeneratedProject): Promise<{
+  projectId?: string;
+  error?: string;
+}> {
+  try {
+    // Check authentication
+    const user = await getCurrentUser();
+    if (!user) {
+      return { error: "Необходима авторизация" };
+    }
+
+    // Validate project data
+    if (!data.project?.name || data.project.name.length < 2) {
+      return { error: "Некорректное название проекта" };
+    }
+
+    // Create project with tasks in transaction
+    const project = await prisma.$transaction(async (tx) => {
+      // Create project
+      const newProject = await tx.project.create({
+        data: {
+          name: data.project.name.slice(0, 100),
+          description: data.project.description?.slice(0, 500) || null,
+          ownerId: user.id,
+          members: {
+            create: {
+              userId: user.id,
+              role: "OWNER",
+            },
+          },
+        },
+      });
+
+      // Create tasks
+      if (data.tasks && data.tasks.length > 0) {
+        const tasksToCreate = data.tasks.slice(0, 10).map((task, index) => ({
+          title: task.title.slice(0, 200),
+          description: task.description?.slice(0, 2000) || null,
+          status: "TODO" as const,
+          priority: task.priority || "MEDIUM",
+          deadline: task.deadlineDays
+            ? addDays(new Date(), Math.min(task.deadlineDays, 90))
+            : null,
+          projectId: newProject.id,
+          creatorId: user.id,
+          order: index,
+        }));
+
+        await tx.task.createMany({
+          data: tasksToCreate,
+        });
+      }
+
+      return newProject;
+    });
+
+    return { projectId: project.id };
+  } catch (error) {
+    console.error("Create project from AI error:", error);
+    return { error: "Ошибка создания проекта" };
   }
 }

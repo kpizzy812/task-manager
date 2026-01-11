@@ -37,3 +37,22 @@ export interface OpenRouterResponse {
     finish_reason: string;
   }[];
 }
+
+/**
+ * AI-generated project structure
+ */
+export interface AIGeneratedProject {
+  action: "CREATE_PROJECT";
+  project: {
+    name: string;
+    description: string;
+  };
+  tasks: {
+    title: string;
+    description: string;
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    deadlineDays: number;
+    assignee?: string;
+  }[];
+  invites?: string[];
+}
