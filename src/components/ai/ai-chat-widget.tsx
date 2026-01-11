@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { type ChatMessage, type AIGeneratedProject } from "@/lib/ai/types";
+import { type ChatMessage, type AIGeneratedProject, type AIGeneratedTasksForProject } from "@/lib/ai/types";
 import { parseAIJson } from "@/lib/ai/deepseek";
-import { createProjectFromAI } from "@/actions/ai";
+import { createProjectFromAI, addTasksToProject } from "@/actions/ai";
 
 type Message = {
   role: "user" | "assistant";
@@ -30,7 +30,7 @@ type Message = {
 const INITIAL_MESSAGE: Message = {
   role: "assistant",
   content:
-    "Привет! Я AI-ассистент. Могу помочь:\n\n• Составить план на день\n• Создать проект с задачами\n• Дать советы по приоритетам\n\nЧем могу помочь?",
+    "Привет! Я AI-ассистент. Могу помочь:\n\n• Составить план на день\n• Создать новый проект с задачами\n• Добавить задачи в существующий проект\n• Дать советы по приоритетам\n\nЧем могу помочь?",
 };
 
 export function AIChatWidget() {
@@ -109,9 +109,11 @@ export function AIChatWidget() {
         });
       }
 
-      // Check if AI wants to create project
+      // Check if AI wants to perform an action
       if (fullResponse.includes('"action": "CREATE_PROJECT"')) {
         await handleCreateProject(fullResponse);
+      } else if (fullResponse.includes('"action": "ADD_TASKS"')) {
+        await handleAddTasks(fullResponse);
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -155,6 +157,44 @@ export function AIChatWidget() {
     } catch (error) {
       console.error("Create project error:", error);
       toast.error("Ошибка создания проекта", { id: "create-project" });
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleAddTasks(response: string) {
+    try {
+      // Extract JSON from response
+      const jsonMatch = response.match(/```json\n?([\s\S]*?)\n?```/);
+      if (!jsonMatch) return;
+
+      const tasksData = parseAIJson<AIGeneratedTasksForProject>(jsonMatch[1]);
+
+      if (tasksData.action !== "ADD_TASKS") return;
+
+      setIsCreating(true);
+      toast.loading("Добавляю задачи...", { id: "add-tasks" });
+
+      const result = await addTasksToProject(tasksData);
+
+      if (result.error) {
+        toast.error(result.error, { id: "add-tasks" });
+        return;
+      }
+
+      toast.success(
+        `Добавлено ${result.tasksCount} задач в проект!`,
+        { id: "add-tasks" }
+      );
+
+      // Close chat and redirect to project
+      setIsOpen(false);
+      if (result.projectId) {
+        router.push(`/projects/${result.projectId}`);
+      }
+    } catch (error) {
+      console.error("Add tasks error:", error);
+      toast.error("Ошибка добавления задач", { id: "add-tasks" });
     } finally {
       setIsCreating(false);
     }

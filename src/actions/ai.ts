@@ -18,7 +18,7 @@ import {
   generateTaskInputSchema,
   type AIGeneratedTask,
 } from "@/lib/validations/ai";
-import { type DigestTasksInput, type AIGeneratedProject } from "@/lib/ai/types";
+import { type DigestTasksInput, type AIGeneratedProject, type AIGeneratedTasksForProject } from "@/lib/ai/types";
 import { addDays } from "date-fns";
 
 /**
@@ -240,5 +240,89 @@ export async function createProjectFromAI(data: AIGeneratedProject): Promise<{
   } catch (error) {
     console.error("Create project from AI error:", error);
     return { error: "Ошибка создания проекта" };
+  }
+}
+
+/**
+ * Add tasks to existing project from AI-generated data
+ */
+export async function addTasksToProject(data: AIGeneratedTasksForProject): Promise<{
+  projectId?: string;
+  tasksCount?: number;
+  error?: string;
+}> {
+  try {
+    // Check authentication
+    const user = await getCurrentUser();
+    if (!user) {
+      return { error: "Необходима авторизация" };
+    }
+
+    // Find project by name (case-insensitive, user must be a member)
+    const project = await prisma.project.findFirst({
+      where: {
+        name: {
+          equals: data.projectName,
+          mode: "insensitive",
+        },
+        members: {
+          some: { userId: user.id },
+        },
+      },
+      include: {
+        _count: { select: { tasks: true } },
+      },
+    });
+
+    if (!project) {
+      return { error: `Проект "${data.projectName}" не найден` };
+    }
+
+    // Check if user can add tasks (member of the project)
+    const membership = await prisma.projectMember.findFirst({
+      where: {
+        projectId: project.id,
+        userId: user.id,
+      },
+    });
+
+    if (!membership) {
+      return { error: "Нет прав для добавления задач в этот проект" };
+    }
+
+    // Get current max order
+    const maxOrderTask = await prisma.task.findFirst({
+      where: { projectId: project.id },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    });
+    const startOrder = (maxOrderTask?.order ?? -1) + 1;
+
+    // Create tasks
+    if (data.tasks && data.tasks.length > 0) {
+      const tasksToCreate = data.tasks.slice(0, 10).map((task, index) => ({
+        title: task.title.slice(0, 200),
+        description: task.description?.slice(0, 2000) || null,
+        status: "TODO" as const,
+        priority: task.priority || "MEDIUM",
+        deadline: task.deadlineDays
+          ? addDays(new Date(), Math.min(task.deadlineDays, 90))
+          : null,
+        projectId: project.id,
+        creatorId: user.id,
+        order: startOrder + index,
+      }));
+
+      await prisma.task.createMany({
+        data: tasksToCreate,
+      });
+
+      return { projectId: project.id, tasksCount: tasksToCreate.length };
+    }
+
+    return { error: "Нет задач для добавления" };
+  } catch (error) {
+    console.error("Add tasks to project error:", error);
+    return { error: "Ошибка добавления задач" };
   }
 }

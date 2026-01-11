@@ -56,3 +56,17 @@ export interface AIGeneratedProject {
   }[];
   invites?: string[];
 }
+
+/**
+ * AI-generated tasks for existing project
+ */
+export interface AIGeneratedTasksForProject {
+  action: "ADD_TASKS";
+  projectName: string;
+  tasks: {
+    title: string;
+    description: string;
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    deadlineDays: number;
+  }[];
+}

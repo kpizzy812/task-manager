@@ -33,14 +33,22 @@ async function getUser() {
 }
 
 async function getUserContext(userId: string) {
-  // Get user's projects count
-  const projectsCount = await prisma.project.count({
+  // Get user's projects with names
+  const projects = await prisma.project.findMany({
     where: {
       members: {
         some: { userId },
       },
     },
+    select: {
+      name: true,
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 10,
   });
+
+  const projectsCount = projects.length;
+  const projectNames = projects.map((p) => p.name);
 
   // Get user's active tasks (not done) across all projects
   const tasks = await prisma.task.findMany({
@@ -105,6 +113,7 @@ async function getUserContext(userId: string) {
   return {
     userName: profile?.name || undefined,
     projectsCount,
+    projectNames,
     tasksContext: tasksContext || undefined,
   };
 }
