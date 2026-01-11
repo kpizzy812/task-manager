@@ -1,5 +1,6 @@
 "use client";
 
+import ReactMarkdown from "react-markdown";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type DigestContentProps = {
@@ -23,36 +24,9 @@ export function DigestContent({ content, isLoading }: DigestContentProps) {
     return null;
   }
 
-  // Simple markdown-like rendering
-  const lines = content.split("\n");
-
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-      {lines.map((line, index) => {
-        // Headers
-        if (line.startsWith("## ")) {
-          return (
-            <h3
-              key={index}
-              className="text-sm font-semibold mt-4 mb-2 first:mt-0"
-            >
-              {line.slice(3)}
-            </h3>
-          );
-        }
-
-        // Empty lines
-        if (!line.trim()) {
-          return <div key={index} className="h-2" />;
-        }
-
-        // Regular text
-        return (
-          <p key={index} className="text-sm text-muted-foreground my-1">
-            {line}
-          </p>
-        );
-      })}
+    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-headings:text-base prose-hr:my-2">
+      <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   );
 }
