@@ -240,9 +240,9 @@ export function AIChatWidget() {
             : "opacity-0 translate-y-4 pointer-events-none"
         )}
       >
-        <Card className="flex flex-col h-[500px] max-h-[calc(100vh-140px)] shadow-2xl border-2">
+        <Card className="flex flex-col h-[500px] max-h-[calc(100vh-140px)] shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/50">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 shrink-0">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
                 <Bot className="h-4 w-4 text-primary" />
@@ -323,7 +323,7 @@ export function AIChatWidget() {
           </div>
 
           {/* Input */}
-          <div className="border-t p-3">
+          <div className="p-3 bg-background shrink-0">
             <form onSubmit={handleSubmit} className="flex gap-2">
               <Textarea
                 ref={textareaRef}
