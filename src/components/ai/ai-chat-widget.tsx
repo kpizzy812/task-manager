@@ -12,6 +12,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -248,9 +249,15 @@ export function AIChatWidget() {
                       : "bg-muted rounded-bl-md"
                   )}
                 >
-                  <p className="whitespace-pre-wrap break-words">
-                    {message.content}
-                  </p>
+                  {message.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-headings:text-sm prose-hr:my-2">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  )}
                 </div>
 
                 {message.role === "user" && (

@@ -83,13 +83,21 @@ async function getUserContext(userId: string) {
       LOW: "🟢",
     };
 
+    const statusLabels: Record<string, string> = {
+      TODO: "К выполнению",
+      IN_PROGRESS: "В работе",
+      REVIEW: "На проверке",
+      DONE: "Готово",
+    };
+
     tasksContext = tasks
       .map((t) => {
         const emoji = priorityEmoji[t.priority] || "⚪";
         const deadline = t.deadline
           ? ` (до ${t.deadline.toLocaleDateString("ru-RU")})`
           : "";
-        return `${emoji} [${t.project.name}] ${t.title}${deadline} — ${t.status}`;
+        const status = statusLabels[t.status] || t.status;
+        return `${emoji} [${t.project.name}] ${t.title}${deadline} — ${status}`;
       })
       .join("\n");
   }
